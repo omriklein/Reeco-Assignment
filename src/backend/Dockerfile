@@ -10,4 +10,4 @@ WORKDIR /app
 COPY --from=build /out ./
 ENV ASPNETCORE_URLS=http://+:3000
 EXPOSE 3000
-ENTRYPOINT ["dotnet", "backend.dll"]
+ENTRYPOINT ["dotnet", "OrderApi.dll"]
