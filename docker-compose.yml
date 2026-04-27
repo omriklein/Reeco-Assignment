@@ -27,6 +27,19 @@ services:
       timeout: 3s
       retries: 5
 
+  migrate:
+    build:
+      context: ./src/backend/Migrator
+    environment:
+      CONNECTION_STRING: "Host=postgres;Port=5432;Database=order_ops;Username=postgres;Password=postgres"
+      MIGRATIONS_PATH: /migrations
+    volumes:
+      - ./src/migrations:/migrations:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
   api:
     build:
       context: ./src/backend
@@ -42,6 +55,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
 volumes:
   pgdata:
