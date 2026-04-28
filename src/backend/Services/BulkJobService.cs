@@ -8,7 +8,7 @@ using Microsoft.Extensions.Caching.Distributed;
 
 namespace backend.Services;
 
-public class BulkJobService(IServiceScopeFactory scopeFactory) : IBulkJobService
+public class BulkJobService(IServiceScopeFactory scopeFactory, IEventService eventService) : IBulkJobService
 {
     private readonly ConcurrentDictionary<string, BulkJobState> _jobs = new();
 
@@ -84,6 +84,9 @@ public class BulkJobService(IServiceScopeFactory scopeFactory) : IBulkJobService
         catch
         {
             job.Status = JobStatus.Failed;
+            return;
         }
+
+        await eventService.BroadcastBulkCompletedAsync(job.Id);
     }
 }

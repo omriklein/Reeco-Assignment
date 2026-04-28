@@ -13,6 +13,7 @@ public class OrdersController(IOrderService orderService, IBulkJobService bulkJo
     private const int MaxBulkBatchSize = 10_000;
 
     [HttpPost("bulk-action")]
+    [HttpPost("bulk")]
     public IActionResult BulkAction([FromBody] BulkActionRequest request)
     {
         if (request.OrderIds is null || request.OrderIds.Count == 0)

@@ -12,7 +12,7 @@ using static backend.Models.Enums.AnomalySeverity;
 
 namespace backend.Services;
 
-public class OrderService(AppDbContext db, IDistributedCache cache) : IOrderService
+public class OrderService(AppDbContext db, IDistributedCache cache, IEventService eventService) : IOrderService
 {
     private static readonly DistributedCacheEntryOptions CacheTtl = new()
     {
@@ -138,6 +138,7 @@ public class OrderService(AppDbContext db, IDistributedCache cache) : IOrderServ
         if (order.Status == OrderStatus.Cancelled)
             return (null, "Order is already cancelled", 409);
 
+        var oldStatus = order.Status;
         if (request.Status is not null) order.Status = request.Status;
         if (request.Priority is not null) order.Priority = request.Priority;
         order.UpdatedAt = DateTime.UtcNow;
@@ -154,6 +155,9 @@ public class OrderService(AppDbContext db, IDistributedCache cache) : IOrderServ
         await Task.WhenAll(
             cache.RemoveAsync(CacheKeys.OrderStats),
             cache.RemoveAsync(CacheKeys.OrderAnomalies));
+
+        if (request.Status is not null)
+            await eventService.BroadcastOrderUpdatedAsync(order.Id, order.SupplierId, oldStatus, order.Status!, order.UpdatedAt);
 
         var dto = new OrderDetailDto(
             order.Id, order.SupplierId, order.Supplier.Name,
