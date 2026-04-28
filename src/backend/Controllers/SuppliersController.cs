@@ -25,4 +25,14 @@ public class SuppliersController(ISupplierService supplierService) : ControllerB
 
         return Ok(supplier);
     }
+
+    [HttpGet("{id}/performance")]
+    public async Task<IActionResult> GetSupplierPerformance(string id)
+    {
+        var perf = await supplierService.GetSupplierPerformanceAsync(id);
+        if (perf is null)
+            return NotFound(new { error = "Supplier not found" });
+
+        return Ok(perf);
+    }
 }

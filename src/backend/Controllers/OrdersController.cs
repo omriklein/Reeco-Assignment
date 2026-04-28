@@ -35,6 +35,13 @@ public class OrdersController(IOrderService orderService) : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("stats")]
+    public async Task<IActionResult> GetStats()
+    {
+        var stats = await orderService.GetStatsAsync();
+        return Ok(stats);
+    }
+
     [HttpGet("{id}")]
     public async Task<IActionResult> GetOrder(string id)
     {

@@ -8,11 +8,6 @@ namespace backend.Services;
 
 public class OrderService(AppDbContext db) : IOrderService
 {
-    private static readonly HashSet<string> ValidStatuses =
-    [
-        "pending", "approved", "rejected", "shipped", "delivered", "cancelled"
-    ];
-
     public async Task<PagedResponse<OrderListDto>> GetOrdersAsync(OrderQueryParams p)
     {
         var query = db.Orders
@@ -103,7 +98,7 @@ public class OrderService(AppDbContext db) : IOrderService
     public async Task<(OrderDetailDto? order, string? error, int statusCode)> UpdateOrderAsync(
         string id, UpdateOrderRequest request)
     {
-        if (request.Status is not null && !ValidStatuses.Contains(request.Status))
+        if (request.Status is not null && !OrderStatus.All.Contains(request.Status))
             return (null, "Invalid status value", 400);
 
         var order = await db.Orders
@@ -113,7 +108,7 @@ public class OrderService(AppDbContext db) : IOrderService
 
         if (order is null) return (null, "Order not found", 404);
 
-        if (order.Status == "cancelled")
+        if (order.Status == OrderStatus.Cancelled)
             return (null, "Order is already cancelled", 409);
 
         if (request.Status is not null) order.Status = request.Status;
@@ -130,5 +125,56 @@ public class OrderService(AppDbContext db) : IOrderService
             order.CreatedAt, order.UpdatedAt, order.Warehouse, order.Notes);
 
         return (dto, null, 200);
+    }
+
+    public async Task<OrderStatsDto> GetStatsAsync()
+    {
+        var orders = db.Orders.AsNoTracking();
+
+        var totals = await orders
+            .GroupBy(_ => 1)
+            .Select(g => new { Count = g.Count(), Revenue = g.Sum(o => o.TotalPrice) })
+            .FirstOrDefaultAsync();
+        var totalOrders = totals?.Count ?? 0;
+        var totalRevenue = totals?.Revenue ?? 0m;
+
+        var byStatus = await orders
+            .GroupBy(o => o.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count(), TotalValue = g.Sum(o => o.TotalPrice) })
+            .ToListAsync();
+
+        var byMonth = await orders
+            .GroupBy(o => new { o.CreatedAt.Year, o.CreatedAt.Month })
+            .Select(g => new
+            {
+                g.Key.Year,
+                g.Key.Month,
+                OrderCount = g.Count(),
+                Revenue = g.Sum(o => o.TotalPrice)
+            })
+            .OrderBy(g => g.Year).ThenBy(g => g.Month)
+            .ToListAsync();
+
+        var topSuppliers = await orders
+            .GroupBy(o => new { o.SupplierId, o.Supplier.Name })
+            .Select(g => new { g.Key.SupplierId, g.Key.Name, TotalRevenue = g.Sum(o => o.TotalPrice) })
+            .OrderByDescending(g => g.TotalRevenue)
+            .Take(10)
+            .ToListAsync();
+
+        var byWarehouse = await orders
+            .GroupBy(o => o.Warehouse == null || o.Warehouse == "" ? "unassigned" : o.Warehouse)
+            .Select(g => new { Warehouse = g.Key, Count = g.Count(), TotalValue = g.Sum(o => o.TotalPrice) })
+            .ToListAsync();
+
+        return new OrderStatsDto(
+            totalOrders,
+            totalRevenue,
+            byStatus.ToDictionary(s => s.Status, s => new StatusStats(s.Count, s.TotalValue)),
+            byMonth.Select(m => new MonthStats(
+                $"{m.Year:D4}-{m.Month:D2}", m.OrderCount, m.Revenue)).ToList(),
+            topSuppliers.Select(s => new SupplierRevenueStats(s.SupplierId, s.Name, s.TotalRevenue)).ToList(),
+            byWarehouse.Select(w => new WarehouseStats(w.Warehouse, w.Count, w.TotalValue)).ToList()
+        );
     }
 }
