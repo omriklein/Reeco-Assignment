@@ -47,7 +47,7 @@ public class OrdersController(IOrderService orderService, IBulkJobService bulkJo
 
     [HttpGet]
     public async Task<IActionResult> GetOrders(
-        [FromQuery] string? status = null,
+        [FromQuery] OrderStatus? status = null,
         [FromQuery] string? priority = null,
         [FromQuery] string? supplier_id = null,
         [FromQuery] string? warehouse = null,
