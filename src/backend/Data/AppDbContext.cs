@@ -28,6 +28,7 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
             e.Property(o => o.UpdatedAt).HasColumnName("updated_at");
             e.Property(o => o.Warehouse).HasColumnName("warehouse");
             e.Property(o => o.Notes).HasColumnName("notes");
+            e.Property<uint>("xmin").HasColumnName("xmin").HasColumnType("xid").IsRowVersion();
             e.HasOne(o => o.Supplier).WithMany(s => s.Orders).HasForeignKey(o => o.SupplierId);
             e.HasOne(o => o.Product).WithMany(p => p.Orders).HasForeignKey(o => o.ProductId);
         });

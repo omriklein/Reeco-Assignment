@@ -28,6 +28,22 @@ public class OrdersController(IOrderService orderService, IBulkJobService bulkJo
         return StatusCode(202, new BulkActionResponse(jobId));
     }
 
+    [HttpPost("bulk-actions")]
+    public IActionResult BulkActions([FromBody] BulkActionsRequest request)
+    {
+        if (request.OrderIds is null || request.OrderIds.Count == 0)
+            return BadRequest(new { error = "order_ids must not be empty", code = "INVALID_REQUEST" });
+
+        if (request.OrderIds.Count > MaxBulkBatchSize)
+            return BadRequest(new { error = $"order_ids exceeds maximum of {MaxBulkBatchSize}", code = "INVALID_REQUEST" });
+
+        if (string.IsNullOrWhiteSpace(request.Action) || !BulkActionType.All.Contains(request.Action))
+            return BadRequest(new { error = $"Invalid action '{request.Action}'", code = "INVALID_ACTION" });
+
+        var jobId = bulkJobService.CreateJob(request.OrderIds, request.Action);
+        return StatusCode(202, new BulkActionsResponse(jobId));
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetOrders(
         [FromQuery] string? status = null,

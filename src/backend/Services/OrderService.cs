@@ -13,10 +13,8 @@ public class OrderService(AppDbContext db) : IOrderService
 {
     public async Task<PagedResponse<OrderListDto>> GetOrdersAsync(OrderQueryParams p)
     {
-        var query = db.Orders
-            .Include(o => o.Supplier)
-            .Include(o => o.Product)
-            .AsQueryable();
+        // No Include here — CountAsync stays cheap (no JOIN on 50k rows)
+        var query = db.Orders.AsNoTracking().AsQueryable();
 
         if (!string.IsNullOrEmpty(p.Status))
         {
@@ -33,7 +31,7 @@ public class OrderService(AppDbContext db) : IOrderService
         if (!string.IsNullOrEmpty(p.Warehouse))
             query = query.Where(o => o.Warehouse == p.Warehouse);
 
-        if (p.DateFrom.HasValue) 
+        if (p.DateFrom.HasValue)
         {
             var dateFrom = p.DateFrom.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
             query = query.Where(o => o.CreatedAt >= dateFrom);
@@ -48,9 +46,13 @@ public class OrderService(AppDbContext db) : IOrderService
             query = query.Where(o => o.TotalPrice >= p.MinTotal.Value);
 
         if (!string.IsNullOrEmpty(p.Search))
-            query = query.Where(o => o.Product != null &&
-                o.Product.Name.ToLower().Contains(p.Search.ToLower()));
+        {
+            var search = p.Search.ToLower();
+            query = query.Where(o => db.Products
+                .Any(prod => prod.Id == o.ProductId && prod.Name.ToLower().Contains(search)));
+        }
 
+        // COUNT on orders only — no join overhead
         var total = await query.CountAsync();
 
         bool desc = p.SortDirection == SortDirection.Desc;
@@ -118,7 +120,14 @@ public class OrderService(AppDbContext db) : IOrderService
         if (request.Priority is not null) order.Priority = request.Priority;
         order.UpdatedAt = DateTime.UtcNow;
 
-        await db.SaveChangesAsync();
+        try
+        {
+            await db.SaveChangesAsync();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return (null, "Order was modified by another request", 409);
+        }
 
         var dto = new OrderDetailDto(
             order.Id, order.SupplierId, order.Supplier.Name,
