@@ -12,6 +12,7 @@ builder.Services.AddDbContext<AppDbContext>(opt => opt.UseNpgsql(connectionStrin
 builder.Services.AddScoped<IOrderService, OrderService>();
 builder.Services.AddScoped<ISupplierService, SupplierService>();
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddSingleton<IBulkJobService, BulkJobService>();
 
 builder.Services.AddControllers()
     .AddJsonOptions(opt =>

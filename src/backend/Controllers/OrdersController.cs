@@ -1,3 +1,4 @@
+using backend.Models.DTOs;
 using backend.Models.DTOs.Orders;
 using backend.Models.Enums;
 using backend.Services;
@@ -7,8 +8,26 @@ namespace backend.Controllers;
 
 [ApiController]
 [Route("api/orders")]
-public class OrdersController(IOrderService orderService) : ControllerBase
+public class OrdersController(IOrderService orderService, IBulkJobService bulkJobService) : ControllerBase
 {
+    private const int MaxBulkBatchSize = 10_000;
+
+    [HttpPost("bulk-action")]
+    public IActionResult BulkAction([FromBody] BulkActionRequest request)
+    {
+        if (request.OrderIds is null || request.OrderIds.Count == 0)
+            return BadRequest(new { error = "orderIds must not be empty", code = "INVALID_REQUEST" });
+
+        if (request.OrderIds.Count > MaxBulkBatchSize)
+            return BadRequest(new { error = $"orderIds exceeds maximum of {MaxBulkBatchSize}", code = "INVALID_REQUEST" });
+
+        if (string.IsNullOrWhiteSpace(request.Action) || !BulkActionType.All.Contains(request.Action))
+            return BadRequest(new { error = $"Invalid action '{request.Action}'", code = "INVALID_ACTION" });
+
+        var jobId = bulkJobService.CreateJob(request.OrderIds, request.Action);
+        return StatusCode(202, new BulkActionResponse(jobId));
+    }
+
     [HttpGet]
     public async Task<IActionResult> GetOrders(
         [FromQuery] string? status = null,

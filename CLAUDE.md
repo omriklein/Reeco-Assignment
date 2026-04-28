@@ -110,6 +110,12 @@ The test files are the **authoritative spec**. When README and a test disagree, 
 
 ---
 
+## Working Style
+
+- **Do not run `dotnet build`, `dotnet run`, test scripts, or any shell commands unless explicitly told to.**
+
+---
+
 ## Coding Standards
 
 ### No Magic Strings or Numbers
