@@ -3,6 +3,9 @@ using backend.Models.DTOs;
 using backend.Models.DTOs.Orders;
 using backend.Models.Enums;
 using Microsoft.EntityFrameworkCore;
+using static backend.Models.Enums.AnomalyThresholds;
+using static backend.Models.Enums.AnomalyType;
+using static backend.Models.Enums.AnomalySeverity;
 
 namespace backend.Services;
 
@@ -126,6 +129,92 @@ public class OrderService(AppDbContext db) : IOrderService
 
         return (dto, null, 200);
     }
+
+    public async Task<AnomalyResponse> GetAnomaliesAsync()
+    {
+        var orders = await db.Orders
+            .Include(o => o.Supplier)
+            .Include(o => o.Product)
+            .AsNoTracking()
+            .ToListAsync();
+
+        // Pass 1: detect all anomalies except risky_supplier
+        var anomalyMap = new Dictionary<string, List<string>>();
+
+        foreach (var o in orders)
+        {
+            var types = new List<string>();
+
+            if (Math.Abs(o.TotalPrice - (decimal)o.Quantity * o.UnitPrice) > PriceMismatchTolerance)
+                types.Add(PriceMismatch);
+
+            if (!o.Supplier.Active)
+                types.Add(InactiveSupplier);
+
+            if (o.Quantity < 0)
+                types.Add(NegativeQuantity);
+
+            if (o.UpdatedAt < o.CreatedAt)
+                types.Add(TimestampAnomaly);
+
+            if (o.Product.Price > 0 && o.UnitPrice > o.Product.Price * PriceSpikeMultiplier)
+                types.Add(PriceSpike);
+
+            var hour = o.CreatedAt.Hour;
+            if (hour >= AfterHoursStart || hour < AfterHoursEnd)
+                types.Add(AfterHours);
+
+            if (types.Count > 0)
+                anomalyMap[o.Id] = types;
+        }
+
+        // Compute risky suppliers: those where >50% of their orders are anomalous
+        var supplierTotalCounts = orders
+            .GroupBy(o => o.SupplierId)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        var orderIdToSupplierId = orders.ToDictionary(o => o.Id, o => o.SupplierId);
+
+        var supplierAnomalyCounts = anomalyMap.Keys
+            .Select(id => orderIdToSupplierId.GetValueOrDefault(id))
+            .Where(sid => sid is not null)
+            .GroupBy(sid => sid!)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        var riskySupplierIds = supplierTotalCounts
+            .Where(kv => supplierAnomalyCounts.TryGetValue(kv.Key, out var ac) &&
+                         (double)ac / kv.Value > RiskySupplierRate)
+            .Select(kv => kv.Key)
+            .ToHashSet();
+
+        // Pass 2: add risky_supplier to all orders of risky suppliers
+        foreach (var o in orders)
+        {
+            if (!riskySupplierIds.Contains(o.SupplierId)) continue;
+
+            if (!anomalyMap.TryGetValue(o.Id, out var types))
+            {
+                types = new List<string>();
+                anomalyMap[o.Id] = types;
+            }
+
+            if (!types.Contains(RiskySupplier))
+                types.Add(RiskySupplier);
+        }
+
+        var result = anomalyMap
+            .Select(kv => new AnomalyDto(kv.Key, kv.Value, ComputeSeverity(kv.Value)))
+            .ToList();
+
+        return new AnomalyResponse(result);
+    }
+
+    private static string ComputeSeverity(List<string> types) => types switch
+    {
+        _ when types.Count >= 3 || types.Contains(NegativeQuantity) => High,
+        _ when types.Contains(PriceMismatch) || types.Contains(PriceSpike) || types.Contains(RiskySupplier) => Medium,
+        _ => Low
+    };
 
     public async Task<OrderStatsDto> GetStatsAsync()
     {

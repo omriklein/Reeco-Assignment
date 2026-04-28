@@ -42,6 +42,13 @@ public class OrdersController(IOrderService orderService) : ControllerBase
         return Ok(stats);
     }
 
+    [HttpGet("anomalies")]
+    public async Task<IActionResult> GetAnomalies()
+    {
+        var result = await orderService.GetAnomaliesAsync();
+        return Ok(result);
+    }
+
     [HttpGet("{id}")]
     public async Task<IActionResult> GetOrder(string id)
     {
