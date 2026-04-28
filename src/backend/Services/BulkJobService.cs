@@ -1,8 +1,10 @@
 using System.Collections.Concurrent;
 using backend.Data;
 using backend.Models;
+using backend.Models.Constants;
 using backend.Models.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace backend.Services;
 
@@ -33,6 +35,7 @@ public class BulkJobService(IServiceScopeFactory scopeFactory) : IBulkJobService
         {
             using var scope = scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var cache = scope.ServiceProvider.GetRequiredService<IDistributedCache>();
 
             var ids = orderIds.ToArray();
 
@@ -73,6 +76,10 @@ public class BulkJobService(IServiceScopeFactory scopeFactory) : IBulkJobService
             job.Completed = updatedCount;
             job.Failed    = nonExistentCount + cancelledCount;
             job.Status    = JobStatus.Completed;
+
+            await Task.WhenAll(
+                cache.RemoveAsync(CacheKeys.OrderStats),
+                cache.RemoveAsync(CacheKeys.OrderAnomalies));
         }
         catch
         {

@@ -1,18 +1,38 @@
+using System.Text.Json;
 using backend.Data;
+using backend.Models.Constants;
 using backend.Models.DTOs;
 using backend.Models.DTOs.Orders;
 using backend.Models.Enums;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Distributed;
 using static backend.Models.Enums.AnomalyThresholds;
 using static backend.Models.Enums.AnomalyType;
 using static backend.Models.Enums.AnomalySeverity;
 
 namespace backend.Services;
 
-public class OrderService(AppDbContext db) : IOrderService
+public class OrderService(AppDbContext db, IDistributedCache cache) : IOrderService
 {
+    private static readonly DistributedCacheEntryOptions CacheTtl = new()
+    {
+        AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
+    };
+
+    // Concrete record avoids IEnumerable<T> deserialization ambiguity
+    private record OrdersListEntry(List<OrderListDto> Data, int Total, int Limit, int Offset);
+
     public async Task<PagedResponse<OrderListDto>> GetOrdersAsync(OrderQueryParams p)
     {
+        var listCacheKey = CacheKeys.OrdersListPrefix + JsonSerializer.Serialize(p);
+        var cachedJson = await cache.GetStringAsync(listCacheKey);
+        if (cachedJson is not null)
+        {
+            var entry = JsonSerializer.Deserialize<OrdersListEntry>(cachedJson);
+            if (entry is not null)
+                return new PagedResponse<OrderListDto>(entry.Data, entry.Total, entry.Limit, entry.Offset);
+        }
+
         // No Include here — CountAsync stays cheap (no JOIN on 50k rows)
         var query = db.Orders.AsNoTracking().AsQueryable();
 
@@ -80,6 +100,8 @@ public class OrderService(AppDbContext db) : IOrderService
                 o.CreatedAt, o.UpdatedAt, o.Warehouse, o.Notes))
             .ToListAsync();
 
+        var listEntry = new OrdersListEntry(orders, total, p.Limit, p.Offset);
+        await cache.SetStringAsync(listCacheKey, JsonSerializer.Serialize(listEntry), CacheTtl);
         return new PagedResponse<OrderListDto>(orders, total, p.Limit, p.Offset);
     }
 
@@ -129,6 +151,10 @@ public class OrderService(AppDbContext db) : IOrderService
             return (null, "Order was modified by another request", 409);
         }
 
+        await Task.WhenAll(
+            cache.RemoveAsync(CacheKeys.OrderStats),
+            cache.RemoveAsync(CacheKeys.OrderAnomalies));
+
         var dto = new OrderDetailDto(
             order.Id, order.SupplierId, order.Supplier.Name,
             order.ProductId, order.Product.Name,
@@ -141,6 +167,10 @@ public class OrderService(AppDbContext db) : IOrderService
 
     public async Task<AnomalyResponse> GetAnomaliesAsync()
     {
+        var cached = await cache.GetStringAsync(CacheKeys.OrderAnomalies);
+        if (cached is not null)
+            return JsonSerializer.Deserialize<AnomalyResponse>(cached)!;
+
         var orders = await db.Orders
             .Include(o => o.Supplier)
             .Include(o => o.Product)
@@ -215,7 +245,9 @@ public class OrderService(AppDbContext db) : IOrderService
             .Select(kv => new AnomalyDto(kv.Key, kv.Value, ComputeSeverity(kv.Value)))
             .ToList();
 
-        return new AnomalyResponse(result);
+        var response = new AnomalyResponse(result);
+        await cache.SetStringAsync(CacheKeys.OrderAnomalies, JsonSerializer.Serialize(response), CacheTtl);
+        return response;
     }
 
     private static string ComputeSeverity(List<string> types) => types switch
@@ -227,6 +259,10 @@ public class OrderService(AppDbContext db) : IOrderService
 
     public async Task<OrderStatsDto> GetStatsAsync()
     {
+        var cached = await cache.GetStringAsync(CacheKeys.OrderStats);
+        if (cached is not null)
+            return JsonSerializer.Deserialize<OrderStatsDto>(cached)!;
+
         var orders = db.Orders.AsNoTracking();
 
         var totals = await orders
@@ -265,7 +301,7 @@ public class OrderService(AppDbContext db) : IOrderService
             .Select(g => new { Warehouse = g.Key, Count = g.Count(), TotalValue = g.Sum(o => o.TotalPrice) })
             .ToListAsync();
 
-        return new OrderStatsDto(
+        var stats = new OrderStatsDto(
             totalOrders,
             totalRevenue,
             byStatus.ToDictionary(s => s.Status, s => new StatusStats(s.Count, s.TotalValue)),
@@ -274,5 +310,7 @@ public class OrderService(AppDbContext db) : IOrderService
             topSuppliers.Select(s => new SupplierRevenueStats(s.SupplierId, s.Name, s.TotalRevenue)).ToList(),
             byWarehouse.Select(w => new WarehouseStats(w.Warehouse, w.Count, w.TotalValue)).ToList()
         );
+        await cache.SetStringAsync(CacheKeys.OrderStats, JsonSerializer.Serialize(stats), CacheTtl);
+        return stats;
     }
 }
