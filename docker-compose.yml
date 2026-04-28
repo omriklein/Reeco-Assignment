@@ -33,8 +33,10 @@ services:
     environment:
       CONNECTION_STRING: "Host=postgres;Port=5432;Database=order_ops;Username=postgres;Password=postgres"
       MIGRATIONS_PATH: /migrations
+      DATA_PATH: /data
     volumes:
       - ./src/migrations:/migrations:ro
+      - ./data:/data:ro
     depends_on:
       postgres:
         condition: service_healthy
