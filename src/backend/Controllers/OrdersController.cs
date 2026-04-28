@@ -65,8 +65,9 @@ public class OrdersController(IOrderService orderService, IBulkJobService bulkJo
         var sortDir = string.Equals(order, "desc", StringComparison.OrdinalIgnoreCase)
             ? SortDirection.Desc : SortDirection.Asc;
 
+        var clampedLimit = limit < 1 ? 20 : limit;
         var queryParams = new OrderQueryParams(status, priority, supplier_id,
-            warehouse, date_from, date_to, min_total, search, sortField, sortDir, limit, offset);
+            warehouse, date_from, date_to, min_total, search, sortField, sortDir, clampedLimit, offset);
         var result = await orderService.GetOrdersAsync(queryParams);
         return Ok(result);
     }
