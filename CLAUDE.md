@@ -110,6 +110,16 @@ The test files are the **authoritative spec**. When README and a test disagree, 
 
 ---
 
+## Coding Standards
+
+### No Magic Strings or Numbers
+- Never use raw string literals for domain values (statuses, anomaly types, severity levels, action names, etc.) inline in logic. Always define them as constants or enums first.
+- Never use raw numeric literals for domain thresholds (price tolerances, multipliers, time boundaries, rate limits, etc.) inline in logic. Always define them as named constants.
+- Place constants and enums in `src/backend/Models/Enums/` (backend) or equivalent constants files (frontend).
+- Use `static using` to keep call sites clean rather than repeating the class name.
+
+---
+
 ## Key Implementation Notes
 
 ### Data Edge Cases (intentional in CSVs)

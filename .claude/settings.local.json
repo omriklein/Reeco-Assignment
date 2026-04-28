@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker exec *)",
+      "Bash(dotnet build *)",
+      "Bash(docker compose *)"
+    ]
+  }
+}
