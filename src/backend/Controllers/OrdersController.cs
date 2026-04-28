@@ -1,4 +1,5 @@
 using backend.Models.DTOs.Orders;
+using backend.Models.Enums;
 using backend.Services;
 using Microsoft.AspNetCore.Mvc;
 
@@ -10,10 +11,27 @@ public class OrdersController(IOrderService orderService) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetOrders(
+        [FromQuery] string? status = null,
+        [FromQuery] string? priority = null,
+        [FromQuery] string? supplier_id = null,
+        [FromQuery] string? warehouse = null,
+        [FromQuery] DateOnly? date_from = null,
+        [FromQuery] DateOnly? date_to = null,
+        [FromQuery] decimal? min_total = null,
+        [FromQuery] string? search = null,
+        [FromQuery] string? sort = null,
+        [FromQuery] string? order = null,
         [FromQuery] int limit = 20,
         [FromQuery] int offset = 0)
     {
-        var result = await orderService.GetOrdersAsync(limit, offset);
+        var normalized = sort is null ? "" : string.Concat(sort.Split('_').Select(w => char.ToUpper(w[0]) + w[1..].ToLower()));
+        var sortField = Enum.TryParse<SortField>(normalized, ignoreCase: true, out var sf) ? sf : SortField.Id;
+        var sortDir = string.Equals(order, "desc", StringComparison.OrdinalIgnoreCase)
+            ? SortDirection.Desc : SortDirection.Asc;
+
+        var queryParams = new OrderQueryParams(status, priority, supplier_id,
+            warehouse, date_from, date_to, min_total, search, sortField, sortDir, limit, offset);
+        var result = await orderService.GetOrdersAsync(queryParams);
         return Ok(result);
     }
 

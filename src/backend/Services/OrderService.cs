@@ -1,6 +1,7 @@
 using backend.Data;
 using backend.Models.DTOs;
 using backend.Models.DTOs.Orders;
+using backend.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace backend.Services;
@@ -12,22 +13,74 @@ public class OrderService(AppDbContext db) : IOrderService
         "pending", "approved", "rejected", "shipped", "delivered", "cancelled"
     ];
 
-    public async Task<PagedResponse<OrderListDto>> GetOrdersAsync(int limit, int offset)
+    public async Task<PagedResponse<OrderListDto>> GetOrdersAsync(OrderQueryParams p)
     {
-        var total = await db.Orders.CountAsync();
-        var orders = await db.Orders
+        var query = db.Orders
             .Include(o => o.Supplier)
             .Include(o => o.Product)
-            .OrderBy(o => o.Id)
-            .Skip(offset)
-            .Take(limit)
+            .AsQueryable();
+
+        if (!string.IsNullOrEmpty(p.Status))
+        {
+            var statuses = p.Status.Split(',', StringSplitOptions.RemoveEmptyEntries);
+            query = query.Where(o => statuses.Contains(o.Status));
+        }
+
+        if (!string.IsNullOrEmpty(p.Priority))
+            query = query.Where(o => o.Priority == p.Priority);
+
+        if (!string.IsNullOrEmpty(p.SupplierId))
+            query = query.Where(o => o.SupplierId == p.SupplierId);
+
+        if (!string.IsNullOrEmpty(p.Warehouse))
+            query = query.Where(o => o.Warehouse == p.Warehouse);
+
+        if (p.DateFrom.HasValue) 
+        {
+            var dateFrom = p.DateFrom.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+            query = query.Where(o => o.CreatedAt >= dateFrom);
+        }
+        if (p.DateTo.HasValue)
+        {
+            var dateTo = p.DateTo.Value.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+            query = query.Where(o => o.CreatedAt <= dateTo);
+        }
+
+        if (p.MinTotal.HasValue)
+            query = query.Where(o => o.TotalPrice >= p.MinTotal.Value);
+
+        if (!string.IsNullOrEmpty(p.Search))
+            query = query.Where(o => o.Product != null &&
+                o.Product.Name.ToLower().Contains(p.Search.ToLower()));
+
+        var total = await query.CountAsync();
+
+        bool desc = p.SortDirection == SortDirection.Desc;
+        query = (p.SortField, desc) switch
+        {
+            (SortField.TotalPrice, false)  => query.OrderBy(o => o.TotalPrice),
+            (SortField.TotalPrice, true)   => query.OrderByDescending(o => o.TotalPrice),
+            (SortField.CreatedAt, false)   => query.OrderBy(o => o.CreatedAt),
+            (SortField.CreatedAt, true)    => query.OrderByDescending(o => o.CreatedAt),
+            (SortField.UpdatedAt, false)   => query.OrderBy(o => o.UpdatedAt),
+            (SortField.UpdatedAt, true)    => query.OrderByDescending(o => o.UpdatedAt),
+            (SortField.Quantity, false)    => query.OrderBy(o => o.Quantity),
+            (SortField.Quantity, true)     => query.OrderByDescending(o => o.Quantity),
+            (SortField.UnitPrice, false)   => query.OrderBy(o => o.UnitPrice),
+            (SortField.UnitPrice, true)    => query.OrderByDescending(o => o.UnitPrice),
+            _                              => query.OrderBy(o => o.Id)
+        };
+
+        var orders = await query
+            .Skip(p.Offset)
+            .Take(p.Limit)
             .Select(o => new OrderListDto(
                 o.Id, o.SupplierId, o.Supplier.Name, o.ProductId, o.Product.Name,
                 o.Quantity, o.UnitPrice, o.TotalPrice, o.Status, o.Priority,
                 o.CreatedAt, o.UpdatedAt, o.Warehouse, o.Notes))
             .ToListAsync();
 
-        return new PagedResponse<OrderListDto>(orders, total, limit, offset);
+        return new PagedResponse<OrderListDto>(orders, total, p.Limit, p.Offset);
     }
 
     public async Task<OrderDetailDto?> GetOrderByIdAsync(string id)
