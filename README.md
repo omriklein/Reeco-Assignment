@@ -177,27 +177,6 @@ API_URL=http://localhost:8080 npm test
 
 ---
 
-## Scoring
-
-| Category | Tests | Points |
-|----------|-------|--------|
-| Basic CRUD | 15 | 15 |
-| Filtering & Sorting | 10 | 10 |
-| Aggregations | 12 | 20 |
-| Anomaly Detection | 8 | 15 |
-| Bulk Operations | 10 | 15 |
-| Concurrency | 10 | 15 |
-| Performance | 8 | 10 |
-| Real-Time Events | 5 | 10 |
-| Security | 5 | 5 |
-| Code quality & structure | — | 10 |
-| Frontend UX & polish | — | 10 |
-| ARCHITECTURE.md depth | — | 5 |
-| ANOMALY_STRATEGY.md depth | — | 5 |
-| **Total** | **83** | **145** |
-
----
-
 ## CI
 
 A GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every push to `main` and on manual dispatch. It:
@@ -207,6 +186,14 @@ A GitHub Actions workflow (`.github/workflows/ci.yml`) runs on every push to `ma
 3. Runs the complete 83-test suite (`npm test` in `tests/`)
 
 All tests run against real seeded data, the same way they would locally.
+
+---
+
+## Frontend
+![Dashbaord top](images/dashboardTop.png)
+![Dashboard bottom](images/dashboardBottom.png)
+![Orders](images/Orders.png)
+![Anomalies](images/Anomalies.png)
 
 ---
 
