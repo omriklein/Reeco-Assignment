@@ -16,7 +16,7 @@ public class OrderService(AppDbContext db, IDistributedCache cache, IEventServic
 {
     private static readonly DistributedCacheEntryOptions CacheTtl = new()
     {
-        AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(10)
+        AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(2)
     };
 
     // Concrete record avoids IEnumerable<T> deserialization ambiguity
