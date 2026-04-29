@@ -2,18 +2,19 @@ import { Grid, Card, CardContent, Typography, Box } from '@mui/material'
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart'
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney'
 import TrendingUpIcon from '@mui/icons-material/TrendingUp'
+import { MILLION, THOUSAND } from '../../constants'
 import type { OrderStats } from '../../api/types'
 
 function StatCard({ title, value, icon }: { title: string; value: string; icon: React.ReactNode }) {
   return (
     <Card>
       <CardContent>
-        <Box display="flex" justifyContent="space-between" alignItems="flex-start">
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <Box>
             <Typography variant="body2" color="text.secondary" gutterBottom>
               {title}
             </Typography>
-            <Typography variant="h5" fontWeight={700}>
+            <Typography variant="h5" sx={{ fontWeight: 700 }}>
               {value}
             </Typography>
           </Box>
@@ -25,10 +26,10 @@ function StatCard({ title, value, icon }: { title: string; value: string; icon: 
 }
 
 const fmt = (n: number) =>
-  n >= 1_000_000
-    ? `$${(n / 1_000_000).toFixed(1)}M`
-    : n >= 1_000
-    ? `$${(n / 1_000).toFixed(0)}K`
+  n >= MILLION
+    ? `$${(n / MILLION).toFixed(1)}M`
+    : n >= THOUSAND
+    ? `$${(n / THOUSAND).toFixed(0)}K`
     : `$${n?.toFixed(2) || 0}`
 
 interface Props {
@@ -37,7 +38,7 @@ interface Props {
 
 export function StatCards({ stats }: Props) {
   return (
-    <Grid container spacing={2} mb={3}>
+    <Grid container spacing={2} sx={{ mb: 3 }}>
       <Grid size={{ xs: 12, sm: 4 }}>
         <StatCard title="Total Orders" value={stats.total_orders.toLocaleString()} icon={<ShoppingCartIcon fontSize="large" />} />
       </Grid>

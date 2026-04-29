@@ -62,7 +62,7 @@ export function OrdersPage() {
 
   return (
     <>
-      <Typography variant="h5" fontWeight={700} mb={2}>Orders</Typography>
+      <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>Orders</Typography>
 
       <OrderFilters
         filters={filters}

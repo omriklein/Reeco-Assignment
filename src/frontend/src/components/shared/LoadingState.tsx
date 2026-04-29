@@ -6,7 +6,7 @@ interface Props {
 
 export function LoadingState({ message = 'Loading...' }: Props) {
   return (
-    <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" py={8} gap={2}>
+    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 8, gap: 2 }}>
       <CircularProgress />
       <Typography color="text.secondary">{message}</Typography>
     </Box>

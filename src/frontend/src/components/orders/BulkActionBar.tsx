@@ -3,7 +3,7 @@ import {
   Box, Button, MenuItem, Select, FormControl, InputLabel, Dialog, DialogTitle,
   DialogContent, DialogActions, LinearProgress, Typography, Alert, Snackbar,
 } from '@mui/material'
-import { BULK_ACTIONS, type BulkAction } from '../../constants'
+import { BULK_ACTIONS, JOB_POLL_INTERVAL_MS, SNACKBAR_DURATION_MS, type BulkAction } from '../../constants'
 import { bulkAction } from '../../api/orders'
 import { getJob } from '../../api/jobs'
 import { useQueryClient } from '@tanstack/react-query'
@@ -32,12 +32,11 @@ export function BulkActionBar({ selectedIds, onDone }: Props) {
       const j = await getJob(id)
       setJob(j)
       if (j.status === 'processing') {
-        setTimeout(poll, 500)
+        setTimeout(poll, JOB_POLL_INTERVAL_MS)
       } else {
         queryClient.invalidateQueries({ queryKey: ['orders'] })
         queryClient.invalidateQueries({ queryKey: ['stats'] })
-        const msg = `Done: ${j.progress.completed} succeeded, ${j.progress.failed} failed`
-        setSnackbar(msg)
+        setSnackbar(`Done: ${j.progress.completed} succeeded, ${j.progress.failed} failed`)
         setOpen(false)
         onDone()
       }
@@ -49,8 +48,8 @@ export function BulkActionBar({ selectedIds, onDone }: Props) {
 
   return (
     <>
-      <Box display="flex" alignItems="center" gap={2} p={1.5} bgcolor="primary.50" borderRadius={1} mb={1}>
-        <Typography variant="body2" fontWeight={600}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, p: 1.5, bgcolor: 'primary.50', borderRadius: 1, mb: 1 }}>
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>
           {selectedIds.length} selected
         </Typography>
 
@@ -81,7 +80,7 @@ export function BulkActionBar({ selectedIds, onDone }: Props) {
               <LinearProgress variant="determinate" value={progress} sx={{ mb: 1 }} />
               {job && (
                 <Typography variant="caption" color="text.secondary">
-                  {job.progress.completed + job.progress.failed} / {job.progress.total} &nbsp;
+                  {job.progress.completed + job.progress.failed} / {job.progress.total}&nbsp;
                   ({job.progress.failed} failed)
                 </Typography>
               )}
@@ -101,7 +100,7 @@ export function BulkActionBar({ selectedIds, onDone }: Props) {
         </DialogActions>
       </Dialog>
 
-      <Snackbar open={!!snackbar} autoHideDuration={5000} onClose={() => setSnackbar(null)}>
+      <Snackbar open={!!snackbar} autoHideDuration={SNACKBAR_DURATION_MS} onClose={() => setSnackbar(null)}>
         <Alert severity="info" onClose={() => setSnackbar(null)}>{snackbar}</Alert>
       </Snackbar>
     </>

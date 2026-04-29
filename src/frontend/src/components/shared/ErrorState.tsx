@@ -7,7 +7,7 @@ interface Props {
 
 export function ErrorState({ message = 'Something went wrong.', onRetry }: Props) {
   return (
-    <Box py={4}>
+    <Box sx={{ py: 4 }}>
       <Alert
         severity="error"
         action={

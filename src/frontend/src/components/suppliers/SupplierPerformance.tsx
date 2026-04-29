@@ -1,5 +1,6 @@
 import { Card, CardContent, Typography, Grid, Box } from '@mui/material'
 import { LineChart } from '@mui/x-charts/LineChart'
+import { CHART_PRIMARY_COLOR } from '../../constants'
 import type { SupplierPerformance as Perf } from '../../api/types'
 
 interface Props {
@@ -11,7 +12,7 @@ function MetricCard({ label, value }: { label: string; value: string }) {
     <Card variant="outlined">
       <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
         <Typography variant="caption" color="text.secondary">{label}</Typography>
-        <Typography variant="h6" fontWeight={600}>{value}</Typography>
+        <Typography variant="h6" sx={{ fontWeight: 600 }}>{value}</Typography>
       </CardContent>
     </Card>
   )
@@ -23,7 +24,7 @@ export function SupplierPerformance({ perf }: Props) {
 
   return (
     <Box mb={3}>
-      <Typography variant="h6" fontWeight={600} mb={1.5}>Performance Metrics</Typography>
+      <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5 }}>Performance Metrics</Typography>
       <Grid container spacing={2} mb={2}>
         <Grid size={{ xs: 6, sm: 3 }}>
           <MetricCard label="Avg Delivery Days" value={perf.avg_delivery_days.toFixed(1)} />
@@ -42,10 +43,10 @@ export function SupplierPerformance({ perf }: Props) {
       {months.length > 0 && (
         <Card>
           <CardContent>
-            <Typography variant="subtitle1" fontWeight={600} gutterBottom>Monthly Order Trend</Typography>
+            <Typography variant="subtitle1" sx={{ fontWeight: 600 }} gutterBottom>Monthly Order Trend</Typography>
             <LineChart
               xAxis={[{ data: months, scaleType: 'point', tickLabelStyle: { fontSize: 10 } }]}
-              series={[{ data: counts, label: 'Orders', color: '#1976d2' }]}
+              series={[{ data: counts, label: 'Orders', color: CHART_PRIMARY_COLOR }]}
               height={220}
               margin={{ left: 50, right: 20, bottom: 40 }}
             />

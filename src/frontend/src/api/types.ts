@@ -1,5 +1,9 @@
 import type { OrderStatus, OrderPriority } from '../constants'
 
+export type Severity = 'low' | 'medium' | 'high'
+
+export type JobStatus = 'processing' | 'completed' | 'failed'
+
 export interface PaginatedResponse<T> {
   data: T[]
   total: number
@@ -88,7 +92,7 @@ export interface SupplierPerformance {
 export interface Anomaly {
   order_id: string
   anomaly_types: string[]
-  severity: 'low' | 'medium' | 'high'
+  severity: Severity
 }
 
 export interface AnomalyResponse {
@@ -96,7 +100,7 @@ export interface AnomalyResponse {
 }
 
 export interface Job {
-  status: 'processing' | 'completed' | 'failed'
+  status: JobStatus
   progress: {
     total: number
     completed: number

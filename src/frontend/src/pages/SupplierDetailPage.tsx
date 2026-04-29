@@ -57,8 +57,8 @@ export function SupplierDetailPage() {
       {supplierQ.data && <SupplierInfo supplier={supplierQ.data} />}
       {perfQ.data && <SupplierPerformance perf={perfQ.data} />}
 
-      <Box mb={1}>
-        <Typography variant="h6" fontWeight={600}>Order History</Typography>
+      <Box sx={{ mb: 1 }}>
+        <Typography variant="h6" sx={{ fontWeight: 600 }}>Order History</Typography>
       </Box>
 
       {ordersQ.isError ? (

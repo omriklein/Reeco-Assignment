@@ -3,8 +3,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard'
 import ListAltIcon from '@mui/icons-material/ListAlt'
 import WarningAmberIcon from '@mui/icons-material/WarningAmber'
 import { Outlet, NavLink, useLocation } from 'react-router-dom'
-
-const DRAWER_WIDTH = 220
+import { DRAWER_WIDTH } from '../../constants'
 
 const NAV_ITEMS = [
   { label: 'Dashboard', path: '/', icon: <DashboardIcon /> },
@@ -19,7 +18,7 @@ export function AppLayout() {
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
         <Toolbar>
-          <Typography variant="h6" fontWeight={700} noWrap>
+          <Typography variant="h6" sx={{ fontWeight: 700 }} noWrap>
             Reeco — Order Management
           </Typography>
         </Toolbar>
