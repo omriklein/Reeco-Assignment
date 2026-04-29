@@ -60,5 +60,15 @@ services:
       migrate:
         condition: service_completed_successfully
 
+  frontend:
+    build:
+      context: ./src/frontend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_API_TARGET: "http://api:3000"
+    depends_on:
+      - api
+
 volumes:
   pgdata:
