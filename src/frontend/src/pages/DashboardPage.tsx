@@ -1,4 +1,4 @@
-import { Typography, Grid } from '@mui/material'
+import { Typography, Grid, Box } from '@mui/material'
 import { useQuery } from '@tanstack/react-query'
 import { getOrderStats } from '../api/orders'
 import { StatCards } from '../components/dashboard/StatCards'
@@ -24,7 +24,12 @@ export function DashboardPage() {
 
   return (
     <>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>Dashboard</Typography>
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h5" sx={{ mb: 0.25 }}>Dashboard</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Procurement operations overview
+        </Typography>
+      </Box>
 
       <StatCards stats={data} />
 

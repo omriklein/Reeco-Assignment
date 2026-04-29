@@ -10,9 +10,19 @@ interface Props {
 function MetricCard({ label, value }: { label: string; value: string }) {
   return (
     <Card variant="outlined">
-      <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-        <Typography variant="caption" color="text.secondary">{label}</Typography>
-        <Typography variant="h6" sx={{ fontWeight: 600 }}>{value}</Typography>
+      <CardContent sx={{ py: 1.75, px: 2, '&:last-child': { pb: 1.75 } }}>
+        <Typography
+          variant="caption"
+          color="text.secondary"
+          sx={{ textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem', display: 'block', mb: 0.5 }}
+        >
+          {label}
+        </Typography>
+        <Typography
+          sx={{ fontFamily: '"JetBrains Mono", monospace', fontWeight: 500, fontSize: '1.25rem', lineHeight: 1 }}
+        >
+          {value}
+        </Typography>
       </CardContent>
     </Card>
   )
@@ -23,8 +33,8 @@ export function SupplierPerformance({ perf }: Props) {
   const counts = perf.monthly_trend.map((m) => m.order_count)
 
   return (
-    <Box mb={3}>
-      <Typography variant="h6" sx={{ fontWeight: 600, mb: 1.5 }}>Performance Metrics</Typography>
+    <Box sx={{ mb: 3 }}>
+      <Typography variant="h6" sx={{ mb: 1.5 }}>Performance Metrics</Typography>
       <Grid container spacing={2} mb={2}>
         <Grid size={{ xs: 6, sm: 3 }}>
           <MetricCard label="Avg Delivery Days" value={perf.avg_delivery_days.toFixed(1)} />
@@ -43,7 +53,7 @@ export function SupplierPerformance({ perf }: Props) {
       {months.length > 0 && (
         <Card>
           <CardContent>
-            <Typography variant="subtitle1" sx={{ fontWeight: 600 }} gutterBottom>Monthly Order Trend</Typography>
+            <Typography variant="subtitle1" gutterBottom>Monthly Order Trend</Typography>
             <LineChart
               xAxis={[{ data: months, scaleType: 'point', tickLabelStyle: { fontSize: 10 } }]}
               series={[{ data: counts, label: 'Orders', color: CHART_PRIMARY_COLOR }]}

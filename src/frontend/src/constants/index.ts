@@ -37,17 +37,17 @@ export const PRIORITY_CHIP_COLORS: Record<string, 'default' | 'warning' | 'error
 // ── Chart colors ─────────────────────────────────────────────────────────────
 
 export const STATUS_CHART_COLORS: Record<string, string> = {
-  pending: '#ed6c02',
-  approved: '#1565c0',
-  rejected: '#d32f2f',
-  shipped: '#0288d1',
-  delivered: '#2e7d32',
-  cancelled: '#757575',
+  pending: '#d97706',
+  approved: '#1b4332',
+  rejected: '#dc2626',
+  shipped: '#0369a1',
+  delivered: '#15803d',
+  cancelled: '#9ca3af',
 }
 
-export const CHART_PRIMARY_COLOR = '#1565c0'
-export const CHART_SECONDARY_COLOR = '#2e7d32'
-export const CHART_INFO_COLOR = '#0288d1'
+export const CHART_PRIMARY_COLOR = '#1b4332'
+export const CHART_SECONDARY_COLOR = '#d97706'
+export const CHART_INFO_COLOR = '#0369a1'
 
 // ── Layout ───────────────────────────────────────────────────────────────────
 
@@ -63,3 +63,28 @@ export const REVENUE_K_DIVISOR = 1_000
 
 export const JOB_POLL_INTERVAL_MS = 500
 export const SNACKBAR_DURATION_MS = 5_000
+
+// ── Anomalies ─────────────────────────────────────────────────────────────────
+
+export const ANOMALY_TYPES = [
+  'price_mismatch',
+  'inactive_supplier',
+  'negative_quantity',
+  'timestamp_anomaly',
+  'price_spike',
+  'after_hours',
+  'risky_supplier',
+] as const
+export type AnomalyTypeValue = typeof ANOMALY_TYPES[number]
+
+export const SEVERITIES = ['low', 'medium', 'high'] as const
+
+export const ANOMALY_TYPE_LABELS: Record<string, string> = {
+  price_mismatch: 'Price Mismatch',
+  inactive_supplier: 'Inactive Supplier',
+  negative_quantity: 'Negative Qty',
+  timestamp_anomaly: 'Bad Timestamp',
+  price_spike: 'Price Spike',
+  after_hours: 'After Hours',
+  risky_supplier: 'Risky Supplier',
+}

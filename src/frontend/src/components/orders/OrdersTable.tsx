@@ -2,7 +2,7 @@ import { DataGrid, type GridColDef, type GridSortModel, type GridRowSelectionMod
 import { Chip, Link } from '@mui/material'
 import { useNavigate } from 'react-router-dom'
 import dayjs from 'dayjs'
-import { STATUS_COLORS, PRIORITY_COLORS } from '../../constants'
+import { STATUS_CHIP_COLORS, PRIORITY_CHIP_COLORS } from '../../constants'
 import type { Order } from '../../api/types'
 import type { OrderStatus } from '../../constants'
 
@@ -21,7 +21,14 @@ interface Props {
 }
 
 const columns: GridColDef[] = [
-  { field: 'id', headerName: 'Order ID', width: 110 },
+  {
+    field: 'id',
+    headerName: 'Order ID',
+    width: 120,
+    renderCell: ({ value }) => (
+      <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: '0.8rem' }}>{value}</span>
+    ),
+  },
   {
     field: 'product_name',
     headerName: 'Product',
@@ -42,7 +49,7 @@ const columns: GridColDef[] = [
     headerName: 'Status',
     width: 110,
     renderCell: ({ value }) => (
-      <Chip label={value} color={STATUS_COLORS[value as OrderStatus] ?? 'default'} size="small" />
+      <Chip label={value} color={STATUS_CHIP_COLORS[value as OrderStatus] ?? 'default'} size="small" />
     ),
   },
   {
@@ -50,7 +57,7 @@ const columns: GridColDef[] = [
     headerName: 'Priority',
     width: 100,
     renderCell: ({ value }) => (
-      <Chip label={value} color={PRIORITY_COLORS[value] ?? 'default'} size="small" variant="outlined" />
+      <Chip label={value} color={PRIORITY_CHIP_COLORS[value] ?? 'default'} size="small" variant="outlined" />
     ),
   },
   {
@@ -59,7 +66,11 @@ const columns: GridColDef[] = [
     width: 110,
     align: 'right',
     headerAlign: 'right',
-    renderCell: ({ value }) => `$${Number(value).toLocaleString()}`,
+    renderCell: ({ value }) => (
+      <span style={{ fontFamily: '"JetBrains Mono", monospace', fontSize: '0.85rem' }}>
+        ${Number(value).toLocaleString()}
+      </span>
+    ),
   },
   { field: 'warehouse', headerName: 'Warehouse', width: 140, renderCell: ({ value }) => value ?? 'unassigned' },
   {
@@ -108,7 +119,14 @@ export function OrdersTable({
       onRowSelectionModelChange={onSelectionChange}
       disableColumnFilter
       autoHeight
-      sx={{ bgcolor: 'background.paper' }}
+      sx={{
+        bgcolor: 'background.paper',
+        borderRadius: 2,
+        border: '1px solid',
+        borderColor: 'divider',
+        '& .MuiDataGrid-columnHeaders': { bgcolor: 'background.default' },
+        '& .MuiDataGrid-columnHeaderTitle': { fontWeight: 600, fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.06em' },
+      }}
     />
   )
 }

@@ -21,13 +21,13 @@ export function OrderFilters({ filters, suppliers, onChange, onClear }: Props) {
   const set = (key: keyof Filters, value: unknown) => onChange({ ...filters, [key]: value || undefined, offset: 0 })
 
   return (
-    <Box display="flex" flexWrap="wrap" gap={1.5} mb={2} alignItems="center">
+    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, mb: 2, alignItems: 'center' }}>
       <TextField
         size="small"
         placeholder="Search product name..."
         value={filters.search ?? ''}
         onChange={(e) => set('search', e.target.value)}
-        InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
+        slotProps={{ input: { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> } }}
         sx={{ minWidth: 200 }}
       />
 

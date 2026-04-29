@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Typography } from '@mui/material'
+import { Typography, Box } from '@mui/material'
 import { type GridSortModel, type GridRowSelectionModel } from '@mui/x-data-grid'
 import { useQuery } from '@tanstack/react-query'
 import { getOrders } from '../api/orders'
@@ -62,7 +62,10 @@ export function OrdersPage() {
 
   return (
     <>
-      <Typography variant="h5" sx={{ fontWeight: 700, mb: 2 }}>Orders</Typography>
+      <Box sx={{ mb: 2.5 }}>
+        <Typography variant="h5" sx={{ mb: 0.25 }}>Orders</Typography>
+        <Typography variant="body2" color="text.secondary">Browse, filter and bulk-manage procurement orders</Typography>
+      </Box>
 
       <OrderFilters
         filters={filters}
