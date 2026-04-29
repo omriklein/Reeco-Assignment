@@ -176,79 +176,51 @@ public class OrderService(AppDbContext db, IDistributedCache cache, IEventServic
         if (cached is not null)
             return JsonSerializer.Deserialize<AnomalyResponse>(cached)!;
 
-        var orders = await db.Orders
-            .Include(o => o.Supplier)
-            .Include(o => o.Product)
-            .AsNoTracking()
+        var flagsQuery = db.Orders
+            .Join(db.Suppliers, o => o.SupplierId, s => s.Id,
+                  (o, s) => new { o, s })
+            .Join(db.Products, x => x.o.ProductId, p => p.Id,
+                  (x, p) => new
+                  {
+                      x.o.Id,
+                      x.o.SupplierId,
+                      PriceMismatch    = Math.Abs(x.o.TotalPrice - (decimal)x.o.Quantity * x.o.UnitPrice) > PriceMismatchTolerance,
+                      InactiveSupplier = !x.s.Active,
+                      NegativeQuantity = x.o.Quantity < 0,
+                      TimestampAnomaly = x.o.UpdatedAt < x.o.CreatedAt,
+                      PriceSpike       = p.Price > 0 && x.o.UnitPrice > p.Price * PriceSpikeMultiplier,
+                      AfterHours       = x.o.CreatedAt.Hour >= AfterHoursStart
+                                           || x.o.CreatedAt.Hour < AfterHoursEnd,
+                  });
+
+        // Query 1: suppliers where >50% of orders have at least one non-risky anomaly
+        var riskySupplierIds = await flagsQuery
+            .GroupBy(x => x.SupplierId)
+            .Where(g => g.Sum(x => x.PriceMismatch || x.InactiveSupplier || x.NegativeQuantity
+                                     || x.TimestampAnomaly || x.PriceSpike || x.AfterHours ? 1 : 0)
+                        * 1.0 / g.Count() > RiskySupplierRate)
+            .Select(g => g.Key)
             .ToListAsync();
 
-        // Pass 1: detect all anomalies except risky_supplier
-        var anomalyMap = new Dictionary<string, List<string>>();
+        // Query 2: only anomalous rows come back from the DB
+        var anomalousRows = await flagsQuery
+            .Where(x => x.PriceMismatch || x.InactiveSupplier || x.NegativeQuantity
+                     || x.TimestampAnomaly || x.PriceSpike || x.AfterHours
+                     || riskySupplierIds.Contains(x.SupplierId))
+            .ToListAsync();
 
-        foreach (var o in orders)
+        var result = anomalousRows.Select(r =>
         {
             var types = new List<string>();
-
-            if (Math.Abs(o.TotalPrice - (decimal)o.Quantity * o.UnitPrice) > PriceMismatchTolerance)
-                types.Add(PriceMismatch);
-
-            if (!o.Supplier.Active)
-                types.Add(InactiveSupplier);
-
-            if (o.Quantity < 0)
-                types.Add(NegativeQuantity);
-
-            if (o.UpdatedAt < o.CreatedAt)
-                types.Add(TimestampAnomaly);
-
-            if (o.Product.Price > 0 && o.UnitPrice > o.Product.Price * PriceSpikeMultiplier)
-                types.Add(PriceSpike);
-
-            var hour = o.CreatedAt.Hour;
-            if (hour >= AfterHoursStart || hour < AfterHoursEnd)
-                types.Add(AfterHours);
-
-            if (types.Count > 0)
-                anomalyMap[o.Id] = types;
-        }
-
-        // Compute risky suppliers: those where >50% of their orders are anomalous
-        var supplierTotalCounts = orders
-            .GroupBy(o => o.SupplierId)
-            .ToDictionary(g => g.Key, g => g.Count());
-
-        var orderIdToSupplierId = orders.ToDictionary(o => o.Id, o => o.SupplierId);
-
-        var supplierAnomalyCounts = anomalyMap.Keys
-            .Select(id => orderIdToSupplierId.GetValueOrDefault(id))
-            .Where(sid => sid is not null)
-            .GroupBy(sid => sid!)
-            .ToDictionary(g => g.Key, g => g.Count());
-
-        var riskySupplierIds = supplierTotalCounts
-            .Where(kv => supplierAnomalyCounts.TryGetValue(kv.Key, out var ac) &&
-                         (double)ac / kv.Value > RiskySupplierRate)
-            .Select(kv => kv.Key)
-            .ToHashSet();
-
-        // Pass 2: add risky_supplier to all orders of risky suppliers
-        foreach (var o in orders)
-        {
-            if (!riskySupplierIds.Contains(o.SupplierId)) continue;
-
-            if (!anomalyMap.TryGetValue(o.Id, out var types))
-            {
-                types = new List<string>();
-                anomalyMap[o.Id] = types;
-            }
-
-            if (!types.Contains(RiskySupplier))
-                types.Add(RiskySupplier);
-        }
-
-        var result = anomalyMap
-            .Select(kv => new AnomalyDto(kv.Key, kv.Value, ComputeSeverity(kv.Value)))
-            .ToList();
+            if (r.PriceMismatch)                         types.Add(PriceMismatch);
+            if (r.InactiveSupplier)                      types.Add(InactiveSupplier);
+            if (r.NegativeQuantity)                      types.Add(NegativeQuantity);
+            if (r.TimestampAnomaly)                      types.Add(TimestampAnomaly);
+            if (r.PriceSpike)                            types.Add(PriceSpike);
+            if (r.AfterHours)                            types.Add(AfterHours);
+            if (riskySupplierIds.Contains(r.SupplierId)) types.Add(RiskySupplier);
+            return new AnomalyDto(r.Id, types, ComputeSeverity(types));
+        }).ToList();
 
         var response = new AnomalyResponse(result);
         await cache.SetStringAsync(CacheKeys.OrderAnomalies, JsonSerializer.Serialize(response), CacheTtl);
