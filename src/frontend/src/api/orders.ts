@@ -1,5 +1,5 @@
 import { apiFetch, buildQueryString } from './client'
-import type { Order, PaginatedResponse, OrderStats, Anomaly, AnomalyResponse, OrderFilters } from './types'
+import type { Order, PaginatedResponse, OrderStats, Anomaly, AnomalyResponse, AnomalyFilters, OrderFilters } from './types'
 import type { BulkAction } from '../constants'
 
 export function getOrders(filters: OrderFilters = {}): Promise<PaginatedResponse<Order>> {
@@ -22,8 +22,9 @@ export function getOrderStats(): Promise<OrderStats> {
   return apiFetch('/orders/stats')
 }
 
-export function getAnomalies(): Promise<AnomalyResponse> {
-  return apiFetch('/orders/anomalies')
+export function getAnomalies(filters: AnomalyFilters = {}): Promise<AnomalyResponse> {
+  const qs = buildQueryString(filters as Record<string, string | number | boolean | undefined | null>)
+  return apiFetch(`/orders/anomalies${qs}`)
 }
 
 export function bulkAction(orderIds: string[], action: BulkAction, reason?: string): Promise<{ jobId: string }> {

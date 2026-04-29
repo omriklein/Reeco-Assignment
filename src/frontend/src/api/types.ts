@@ -95,8 +95,18 @@ export interface Anomaly {
   severity: Severity
 }
 
+export interface AnomalyFilters {
+  severity?: Severity
+  anomaly_type?: string
+  limit?: number
+  offset?: number
+}
+
 export interface AnomalyResponse {
   data: Anomaly[]
+  total: number
+  limit: number
+  offset: number
 }
 
 export interface Job {
