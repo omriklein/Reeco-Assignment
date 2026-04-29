@@ -128,10 +128,8 @@ public class OrderService(AppDbContext db, IDistributedCache cache, IEventServic
         if (request.Status is not null && !OrderStatus.All.Contains(request.Status))
             return (null, "Invalid status value", 400);
 
-        var order = await db.Orders
-            .Include(o => o.Supplier)
-            .Include(o => o.Product)
-            .FirstOrDefaultAsync(o => o.Id == id);
+        // Load without navigation includes so xmin is unambiguous (JOINs make xmin ambiguous across tables)
+        var order = await db.Orders.FirstOrDefaultAsync(o => o.Id == id);
 
         if (order is null) return (null, "Order not found", 404);
 
@@ -160,12 +158,17 @@ public class OrderService(AppDbContext db, IDistributedCache cache, IEventServic
         if (request.Status is not null)
             await eventService.BroadcastOrderUpdatedAsync(order.Id, order.SupplierId, oldStatus, order.Status!, order.UpdatedAt);
 
+        var fullOrder = await db.Orders
+            .Include(o => o.Supplier)
+            .Include(o => o.Product)
+            .FirstOrDefaultAsync(o => o.Id == id);
+
         var dto = new OrderDetailDto(
-            order.Id, order.SupplierId, order.Supplier.Name,
-            order.ProductId, order.Product.Name,
-            order.Quantity, order.UnitPrice, order.TotalPrice,
-            order.Status, order.Priority,
-            order.CreatedAt, order.UpdatedAt, order.Warehouse, order.Notes);
+            fullOrder!.Id, fullOrder.SupplierId, fullOrder.Supplier.Name,
+            fullOrder.ProductId, fullOrder.Product.Name,
+            fullOrder.Quantity, fullOrder.UnitPrice, fullOrder.TotalPrice,
+            fullOrder.Status, fullOrder.Priority,
+            fullOrder.CreatedAt, fullOrder.UpdatedAt, fullOrder.Warehouse, fullOrder.Notes);
 
         return (dto, null, 200);
     }
