@@ -14,7 +14,7 @@ public class CacheWarmupService(IServiceScopeFactory scopeFactory) : BackgroundS
 
         // Stats and anomalies
         await orderService.GetStatsAsync();
-        await orderService.GetAnomaliesAsync();
+        await orderService.GetAnomaliesAsync(new AnomalyQueryParams());
 
         // Offset-based queries used in concurrency tests (must be cached before bulk tests deplete pending orders)
         var offsetQueries = new[]

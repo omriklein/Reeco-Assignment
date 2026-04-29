@@ -80,9 +80,14 @@ public class OrdersController(IOrderService orderService, IBulkJobService bulkJo
     }
 
     [HttpGet("anomalies")]
-    public async Task<IActionResult> GetAnomalies()
+    public async Task<IActionResult> GetAnomalies(
+        [FromQuery] string? severity = null,
+        [FromQuery] string? anomaly_type = null,
+        [FromQuery] int limit = 0,
+        [FromQuery] int offset = 0)
     {
-        var result = await orderService.GetAnomaliesAsync();
+        var queryParams = new AnomalyQueryParams(severity, anomaly_type, limit, offset);
+        var result = await orderService.GetAnomaliesAsync(queryParams);
         return Ok(result);
     }
 
