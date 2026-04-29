@@ -13,6 +13,6 @@ public class CacheWarmupService(IServiceScopeFactory scopeFactory) : BackgroundS
 
         await orderService.GetOrdersAsync(new OrderQueryParams(null, null, null, null, null, null, null, null));
         await orderService.GetStatsAsync();
-        await orderService.GetAnomaliesAsync();
+        await orderService.GetAnomaliesAsync(new AnomalyQueryParams());
     }
 }

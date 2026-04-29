@@ -170,11 +170,33 @@ public class OrderService(AppDbContext db, IDistributedCache cache, IEventServic
         return (dto, null, 200);
     }
 
-    public async Task<AnomalyResponse> GetAnomaliesAsync()
+    public async Task<AnomalyResponse> GetAnomaliesAsync(AnomalyQueryParams queryParams)
+    {
+        var allAnomalies = await GetOrComputeAllAnomaliesAsync();
+
+        IEnumerable<AnomalyDto> filtered = allAnomalies;
+
+        if (!string.IsNullOrWhiteSpace(queryParams.Severity))
+            filtered = filtered.Where(a => a.Severity.Equals(queryParams.Severity, StringComparison.OrdinalIgnoreCase));
+
+        if (!string.IsNullOrWhiteSpace(queryParams.AnomalyType))
+            filtered = filtered.Where(a => a.AnomalyTypes.Contains(queryParams.AnomalyType, StringComparer.OrdinalIgnoreCase));
+
+        var filteredList = filtered.ToList();
+        var total = filteredList.Count;
+
+        List<AnomalyDto> page = queryParams.Limit > 0
+            ? filteredList.Skip(queryParams.Offset).Take(queryParams.Limit).ToList()
+            : filteredList;
+
+        return new AnomalyResponse(page, total, queryParams.Limit, queryParams.Offset);
+    }
+
+    private async Task<List<AnomalyDto>> GetOrComputeAllAnomaliesAsync()
     {
         var cached = await cache.GetStringAsync(CacheKeys.OrderAnomalies);
         if (cached is not null)
-            return JsonSerializer.Deserialize<AnomalyResponse>(cached)!;
+            return JsonSerializer.Deserialize<List<AnomalyDto>>(cached)!;
 
         var orders = await db.Orders
             .Include(o => o.Supplier)
@@ -250,9 +272,8 @@ public class OrderService(AppDbContext db, IDistributedCache cache, IEventServic
             .Select(kv => new AnomalyDto(kv.Key, kv.Value, ComputeSeverity(kv.Value)))
             .ToList();
 
-        var response = new AnomalyResponse(result);
-        await cache.SetStringAsync(CacheKeys.OrderAnomalies, JsonSerializer.Serialize(response), CacheTtl);
-        return response;
+        await cache.SetStringAsync(CacheKeys.OrderAnomalies, JsonSerializer.Serialize(result), CacheTtl);
+        return result;
     }
 
     private static string ComputeSeverity(List<string> types) => types switch

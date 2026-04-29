@@ -9,5 +9,5 @@ public interface IOrderService
     Task<OrderDetailDto?> GetOrderByIdAsync(string id);
     Task<(OrderDetailDto? order, string? error, int statusCode)> UpdateOrderAsync(string id, UpdateOrderRequest request);
     Task<OrderStatsDto> GetStatsAsync();
-    Task<AnomalyResponse> GetAnomaliesAsync();
+    Task<AnomalyResponse> GetAnomaliesAsync(AnomalyQueryParams queryParams);
 }
