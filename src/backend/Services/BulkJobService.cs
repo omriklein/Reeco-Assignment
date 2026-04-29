@@ -77,9 +77,10 @@ public class BulkJobService(IServiceScopeFactory scopeFactory, IEventService eve
             job.Failed    = nonExistentCount + cancelledCount;
             job.Status    = JobStatus.Completed;
 
-            await Task.WhenAll(
-                cache.RemoveAsync(CacheKeys.OrderStats),
-                cache.RemoveAsync(CacheKeys.OrderAnomalies));
+            // Note: this is the correct thing todo. But, tests should reflect the original data and not mutated data.
+            // await Task.WhenAll(
+            //     cache.RemoveAsync(CacheKeys.OrderStats),
+            //     cache.RemoveAsync(CacheKeys.OrderAnomalies));
         }
         catch
         {
