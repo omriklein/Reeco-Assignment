@@ -1,7 +1,6 @@
 using backend.Data;
 using backend.Services;
 using Microsoft.EntityFrameworkCore;
-using StackExchange.Redis;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,9 +10,6 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 var redisConnStr = builder.Configuration.GetConnectionString("Redis") ?? "localhost:6379";
 
 builder.Services.AddDbContext<AppDbContext>(opt => opt.UseNpgsql(connectionString));
-
-builder.Services.AddSingleton<IConnectionMultiplexer>(
-    ConnectionMultiplexer.Connect(redisConnStr));
 
 builder.Services.AddStackExchangeRedisCache(options =>
 {

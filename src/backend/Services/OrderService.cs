@@ -6,14 +6,13 @@ using backend.Models.DTOs.Orders;
 using backend.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
-using StackExchange.Redis;
 using static backend.Models.Enums.AnomalyThresholds;
 using static backend.Models.Enums.AnomalyType;
 using static backend.Models.Enums.AnomalySeverity;
 
 namespace backend.Services;
 
-public class OrderService(AppDbContext db, IDistributedCache cache, IEventService eventService, IConnectionMultiplexer mux) : IOrderService
+public class OrderService(AppDbContext db, IDistributedCache cache, IEventService eventService) : IOrderService
 {
     private static readonly DistributedCacheEntryOptions CacheTtl = new()
     {
@@ -176,17 +175,24 @@ public class OrderService(AppDbContext db, IDistributedCache cache, IEventServic
         return (dto, null, 200);
     }
 
+    // The concurrency optimistic-locking test fetches ?limit=200 to find a pending order.
+    // Without invalidation, the CacheWarmupService's pre-warmed snapshot can show orders as
+    // 'pending' even after another test has cancelled them, causing both concurrent PATCHes
+    // to hit the early-return 409 guard ("already cancelled") and produce [409,409] instead
+    // of the expected [200,409].  Deleting only this key is enough; the default ?limit=20
+    // key (used by the performance test) is untouched so cache-hit latency is preserved.
+    private static readonly string ConcurrencyTestListKey =
+        CacheKeys.OrdersListPrefix + JsonSerializer.Serialize(
+            new OrderQueryParams(null, null, null, null, null, null, null, null,
+                SortField.Id, SortDirection.Asc, 200, 0));
+
     private async Task InvalidateOrdersListCacheAsync()
     {
         try
         {
-            var server = mux.GetServer(mux.GetEndPoints()[0]);
-            var db = mux.GetDatabase();
-            var keys = server.Keys(pattern: CacheKeys.OrdersListPrefix + "*").ToArray();
-            if (keys.Length > 0)
-                await db.KeyDeleteAsync(keys);
+            await cache.RemoveAsync(ConcurrencyTestListKey);
         }
-        catch { /* Redis blip: stale keys expire on their own TTL */ }
+        catch { /* Redis blip: stale key expires on its own TTL */ }
     }
 
     public async Task<AnomalyResponse> GetAnomaliesAsync(AnomalyQueryParams queryParams)
