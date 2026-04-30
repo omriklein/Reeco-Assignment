@@ -6,13 +6,14 @@ using backend.Models.DTOs.Orders;
 using backend.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Distributed;
+using StackExchange.Redis;
 using static backend.Models.Enums.AnomalyThresholds;
 using static backend.Models.Enums.AnomalyType;
 using static backend.Models.Enums.AnomalySeverity;
 
 namespace backend.Services;
 
-public class OrderService(AppDbContext db, IDistributedCache cache, IEventService eventService) : IOrderService
+public class OrderService(AppDbContext db, IDistributedCache cache, IEventService eventService, IConnectionMultiplexer mux) : IOrderService
 {
     private static readonly DistributedCacheEntryOptions CacheTtl = new()
     {
@@ -150,6 +151,8 @@ public class OrderService(AppDbContext db, IDistributedCache cache, IEventServic
             return (null, "Order was modified by another request", 409);
         }
 
+        await InvalidateOrdersListCacheAsync();
+
         // Note: this is the correct thing todo. But, tests should reflect the original data and not mutated data.
         // await Task.WhenAll(
         //     cache.RemoveAsync(CacheKeys.OrderStats),
@@ -171,6 +174,19 @@ public class OrderService(AppDbContext db, IDistributedCache cache, IEventServic
             fullOrder.CreatedAt, fullOrder.UpdatedAt, fullOrder.Warehouse, fullOrder.Notes);
 
         return (dto, null, 200);
+    }
+
+    private async Task InvalidateOrdersListCacheAsync()
+    {
+        try
+        {
+            var server = mux.GetServer(mux.GetEndPoints()[0]);
+            var db = mux.GetDatabase();
+            var keys = server.Keys(pattern: CacheKeys.OrdersListPrefix + "*").ToArray();
+            if (keys.Length > 0)
+                await db.KeyDeleteAsync(keys);
+        }
+        catch { /* Redis blip: stale keys expire on their own TTL */ }
     }
 
     public async Task<AnomalyResponse> GetAnomaliesAsync(AnomalyQueryParams queryParams)
